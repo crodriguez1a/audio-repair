@@ -23,18 +23,14 @@ Restoring lost audio data is particularly problematic because the audio is gener
 
 ### Datasets and Inputs
 
-The solution will be applied to two crude recordings that have distinguishable audio loss. Additionally, each selection has significant background noise, distortion, and some crosstalk. The content in the audio is of orations that were originally recorded in 1963 and ~1985 respectively.  
+The solution will be applied to two recordings that have distinguishable audio degradation. Each selection has background noise, distortion, and some loss.  
 
-In both cases, the audio was extracted from YouTube videos using a tool that converts video to an audio-only format. For each, only small distinct sample will be used as an input.
+Both damaged audio sources were also repaired using the industry-leading software. For each, only a small distinct sample of the damaged audio will be used, and a corresponding sample of the repaired audio will serve as ground truth.
 
-*Speech given by James Baldwin*
-  - ["Free and Brave" a speech by James Baldwin 1963](https://www.youtube.com/watch?v=EMYgOfcgMaI)
-
-*Interview given by Hector Lavoe*
-  - [HECTOR LAVOE - AUDIO RAREZA 2.wmv](https://www.youtube.com/watch?v=ICvmLoBPX4o&t=40s)
+*Spectral Repair with iZotope RX 2*
+http://www.auldworks.com/articles/audiorestorenew2.htm
 
 The goal of using two inputs is to validate that the technique can work generally across audio signals with similar characteristics.
-
 
 ### Solution Statement
 
@@ -44,17 +40,15 @@ Noise and unwanted signal sources are cleaned as part of pre-processing. Any des
 
 ### Benchmark Model
 
-As a benchmark, the outputs will be compared to a high-fidelity digital recording. The benchmark, when analyzed, should not present any noise or anomalies which is ultimately the goal of the solution.
-
-*Interview with Barack Obama*
-
-- [Barack Obama discusses dancing on David Letterman's new Netflix show](https://www.youtube.com/watch?v=SPCYaMmPnIQ)
+As a benchmark, the outputs of the solution will be compared to the professionally repaired samples which will establish ground truth.
 
 ### Evaluation Metrics
 
-To evaluate, the solution will measure the mean Silhouette Coefficient (silhouette score). The output data should reflect an optimal value for `n_clusters` that is relatively small.  Since a silhouette analysis can be ambivalent in deciding between 2 and 4 clusters (1), the solution should also evaluate the size of the individual clusters.
+To evaluate success, the solution will measure the mean Silhouette Coefficient (silhouette score). The output data should reflect an optimal value for `n_clusters` that is relatively small.  Since a silhouette analysis can be ambivalent in deciding between 2 and 4 clusters (1), the solution should also evaluate the size of the individual clusters.
 
 Larger sized clusters should represent the desired source audio, while smaller clusters should represent naturally occurring noise and/or other less significant source audio.
+
+The solution should hope to have a statistically similar score as compared to its benchmark, and exhibit nearly identical clustering, outliers, and anomalies.
 
 ### Project Design
 
@@ -63,11 +57,11 @@ In theory, the solution should sequentially accomplish these overarching tasks:
 ![workflow](flow.png "Workflow")
 
 I. Noise removal with FFTT and/or DBSCAN
-  - Fast Fourier Transform noise reduction could potentially aide in removal of typical and expected noise frequencies.
+  - Fast Fourier Transform noise reduction could potentially aid in the removal of typical and expected noise frequencies.
 
   - DBSCAN might be a better overall solution because it may protect sections that are candidates for substitution.
 
-   Points that are generally unreachable  from other points can be considered noise and can cleaned from the dataset. The threshold for noise should be high so as not to inadvertently remove data that can be substituted.
+   Points that are generally unreachable from other points can be considered noise and can be cleaned from the dataset. The threshold for noise should be high so as not to inadvertently remove data that can be substituted.
 
 II. Anomaly Detection with DBSCAN
   - For the purpose of this solution, anomalies should be distinguishable from noise. Anomalous data points should display more connectedness to points that represent the desired source audio.
@@ -76,7 +70,7 @@ II. Anomaly Detection with DBSCAN
 
 III. Encoding of anomalous points as missing data, temporarily substituting with `None`
 
-  - Once Identified, the solution will treat anomalies as missing data simply by replacing those points with null values (intended to resemble missing values in a structured data set).
+  - Once Identified, the solution will treat anomalies like missing data simply by replacing those points with null values (intended to resemble missing values in a structured data set).
 
 IV. Replace missing data points leveraging K-Nearest Neighbors
 
@@ -84,7 +78,7 @@ IV. Replace missing data points leveraging K-Nearest Neighbors
 
   > "The assumption behind using KNN for missing values is that a point value can be approximated by the values of the points that are closest to it, based on other variables." (2)
 
-
+Note: For extensibility towards larger audio sources, there could be an additional pre-processing step of lossless reduction of dimensionality using PCA.
 
 **References**
 
