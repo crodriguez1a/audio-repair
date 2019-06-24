@@ -78,7 +78,8 @@ IV. Replace missing data points leveraging K-Nearest Neighbors
 
   > "The assumption behind using KNN for missing values is that a point value can be approximated by the values of the points that are closest to it, based on other variables." (2)
 
-Note: For extensibility towards larger audio sources, there could be an additional pre-processing step of lossless reduction of dimensionality using PCA.
+Additional considerations that could alter this solution:
+  - representing audio data in higher dimensions could me more informative, but presents challenges with this approach
 
 **References**
 
