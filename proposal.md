@@ -11,6 +11,10 @@ Today, unearthing a rare audio archive can be as simple as accessing a popular v
 
 The goal of this capstone is to experiment with using [imputation](https://en.wikipedia.org/wiki/Imputation_(statistics)) algorithms to restore portions of audio content that were recorded poorly or were lost due to degradation.
 
+The occurrence of missing data is not uncommon in machine learning. Methods for imputation have been explored in-depth and for various applications including [medical domains](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4959387/).
+
+Matrix imputation has been applied to audio applications specifically in an attempt to impute missing values in the spectrogram as noted in this [research](https://ethman.github.io/063_1570360326.pdf) done by students at Northwestern University.
+
 ### Problem Statement
 
 Restoring or repairing audio is challenging for many reasons. There are some inherent challenges with working audio including but not limited to:
@@ -25,12 +29,14 @@ Restoring lost audio data is particularly problematic because the audio is gener
 
 The solution will be applied to two recordings that have distinguishable audio degradation. Each selection has background noise, distortion, and some loss.  
 
-Both damaged audio sources were also repaired using the industry-leading software. For each, only a small distinct sample of the damaged audio will be used, and a corresponding sample of the repaired audio will serve as ground truth.
+Both damaged audio sources were also repaired using the industry-leading software. For each, only a small distinct sample of the damaged audio will be used, and a corresponding sample of the repaired audio will serve as ground truth. The sources will be broken up into eight total samples of similar lengths.
+
+The first [audio source](https://github.com/crodriguez1a/audio-repair/blob/capstone/data/audio_sources/agnus%20dei%20before%20and%20after.mp3) should yield five distinct samples with clear examples of noise, pops, and other unique distortions.
+
+The second [audio source](https://github.com/crodriguez1a/audio-repair/blob/capstone/data/audio_sources/angelica%20before%20and%20after.mp3) will yield three samples representing competing sounds, noise, and also a faint distortion.
 
 *Spectral Repair with iZotope RX 2*
 http://www.auldworks.com/articles/audiorestorenew2.htm
-
-The goal of using two inputs is to validate that the technique can work generally across audio signals with similar characteristics.
 
 ### Solution Statement
 
@@ -40,7 +46,7 @@ Noise and unwanted signal sources are cleaned as part of pre-processing. Any des
 
 ### Benchmark Model
 
-As a benchmark, the outputs of the solution will be compared to the professionally repaired samples which will establish ground truth.
+The benchmark model will be produced using a simple *frequent value* imputation strategy. Missing values will be replaced naively using the most frequent value of each column in which the missing values are located. (2)
 
 ### Evaluation Metrics
 
@@ -48,7 +54,7 @@ To evaluate success, the solution will measure the mean Silhouette Coefficient (
 
 Larger sized clusters should represent the desired source audio, while smaller clusters should represent naturally occurring noise and/or other less significant source audio.
 
-The solution should hope to have a statistically similar score as compared to its benchmark, and exhibit nearly identical clustering, outliers, and anomalies.
+The solution should hope to have a statistically similar score as compared to ground truth, and exhibit nearly identical clustering, outliers, and anomalies.
 
 ### Project Design
 
@@ -76,14 +82,17 @@ IV. Replace missing data points leveraging K-Nearest Neighbors
 
   - The solution will then attempt to replace the missing values with statistically similar values as predicted using **KNN**.
 
-  > "The assumption behind using KNN for missing values is that a point value can be approximated by the values of the points that are closest to it, based on other variables." (2)
+  > "The assumption behind using KNN for missing values is that a point value can be approximated by the values of the points that are closest to it, based on other variables." (3)
 
-Note: Representing audio data in higher dimensions could me more informative, but presents challenges with this approach
+Note: Representing audio data in higher dimensions could be more informative toward repairing but also adds significant complexity to the solution. Initially, this solution will intend to be intentionally simplistic and relatively inexpensive computationally.
 
 **References**
 
 1. https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html
 
+1. https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html
+
 1. https://towardsdatascience.com/the-use-of-knn-for-missing-values-cf33d935c637
+
 
 -----------
