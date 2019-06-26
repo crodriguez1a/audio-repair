@@ -3,6 +3,7 @@ Nearest Neighbor Imputation for Damaged Audio
 
 ## Data
 
-Input and benchmark data can be found in the `data` folder at the root of the project. The audio files include segments "before" and "after" restoration. (1)
+Data can be found in [S3](https://capstone4audacity.s3.amazonaws.com/audio_sources.zip). 
 
-1. http://www.auldworks.com/articles/audiorestorenew2.htm
+**S3**
+https://capstone4audacity.s3.amazonaws.com/audio_sources.zip

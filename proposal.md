@@ -29,14 +29,14 @@ Restoring lost audio data is particularly problematic because the audio is gener
 
 The solution will be applied to two recordings that have distinguishable audio degradation. Each selection has background noise, distortion, and some loss.  
 
-Both damaged audio sources were also repaired using the industry-leading software. For each, only a small distinct sample of the damaged audio will be used, and a corresponding sample of the repaired audio will serve as ground truth. The sources will be broken up into eight total samples of similar lengths.
+Both damaged audio sources were also repaired using the industry-leading software. For each, only a small distinct sample of the damaged audio will be used, and a corresponding sample of the repaired audio will serve as ground truth. The source audio will be broken up into various files of similar lengths that display unique characteristics including noise, pops, and competing sounds.
 
-The first [audio source](https://github.com/crodriguez1a/audio-repair/blob/capstone/data/audio_sources/agnus%20dei%20before%20and%20after.mp3) should yield five distinct samples with clear examples of noise, pops, and other unique distortions.
+Each of the audio files will be broken down further into discrete contiguous segments of audio samples on which analysis will be applied. Using a normalized sampling rate of 44,100 samples per second and frame size of ~500ms will generate a total of ~1200 segments. Some experimentation will likely be required to find an optimal frame size that would allow for meaningful analysis.
 
-The second [audio source](https://github.com/crodriguez1a/audio-repair/blob/capstone/data/audio_sources/angelica%20before%20and%20after.mp3) will yield three samples representing competing sounds, noise, and also a faint distortion.
-
-*Spectral Repair with iZotope RX 2*
+*Audio Sourced From:*
 http://www.auldworks.com/articles/audiorestorenew2.htm
+https://www.izotope.com/en/products/repair-and-edit/rx/post.html
+https://www.izotope.com/en/support/support-resources/guides/audio-repair-and-enhancement.html
 
 ### Solution Statement
 
@@ -84,7 +84,7 @@ IV. Replace missing data points leveraging K-Nearest Neighbors
 
   > "The assumption behind using KNN for missing values is that a point value can be approximated by the values of the points that are closest to it, based on other variables." (3)
 
-Note: Representing audio data in higher dimensions could be more informative toward repairing but also adds significant complexity to the solution. Initially, this solution will intend to be intentionally simplistic and relatively inexpensive computationally.
+Note: Representing audio data in higher dimensions could be more informative toward repairing but also adds significant complexity to the solution. Initially, the goal of the solution is find a less complex approach that is relatively inexpensive computationally.
 
 **References**
 
