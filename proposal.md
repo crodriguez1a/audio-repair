@@ -31,7 +31,7 @@ The solution will be applied to two recordings that have distinguishable audio d
 
 Both damaged audio sources were also repaired using the industry-leading software. For each, only a small distinct sample of the damaged audio will be used, and a corresponding sample of the repaired audio will serve as ground truth. The source audio will be broken up into various files of similar lengths that display unique characteristics including noise, pops, and competing sounds.
 
-Each of the audio files will be broken down further into discrete contiguous segments of audio samples on which analysis will be applied. Using a normalized sampling rate of 44,100 samples per second and frame size of ~500ms will generate a total of ~1200 segments. Some experimentation will likely be required to find an optimal frame size that would allow for meaningful analysis.
+Each of the audio files will be broken down further into discrete contiguous segments of audio samples on which analysis will be applied. Using a normalized sampling rate of 44,100 samples per second and frame (or window) size of ~1-2s will generate a total of ~1200 segments across all the files. Some experimentation will likely be required to find an optimal frame size that would allow for meaningful analysis.
 
 *Audio Sourced From:*
 http://www.auldworks.com/articles/audiorestorenew2.htm
