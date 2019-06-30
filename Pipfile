@@ -9,6 +9,12 @@ verify_ssl = true
 jupyter = "*"
 numpy = "*"
 librosa = "*"
+matplotlib = "*"
+pandas = "*"
+hdbscan = "*"
+seaborn = "*"
+mir-eval = "*"
+impyute = "*"
 
 [requires]
 python_version = "3.7"

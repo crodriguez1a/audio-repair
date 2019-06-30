@@ -25,11 +25,12 @@ def concat_segments():
 class AudioSegment:
     __slot__ = ['_wav', '_sample_rate', '_clusterer', '_imputer']
 
-    def __init__(self, wav, sample_rate, clusterer, imputer):
+    def __init__(self, wav, ground_truth_wav, sample_rate, clusterer, imputer):
         self._wav = wav # from librosa.load
         self._sample_rate = sample_rate
-        self._clusterer = clusterer
-        self._imputer = imputer
+        self._clusterer = clusterer # initalized?
+        self._imputer = imputer # not intialized
+        self._gt_wav = ground_truth_wav
 
     def extract_features(self):
         pass
@@ -54,4 +55,29 @@ class AudioSegment:
 
     @property
     def imputed_wav(self) -> np.ndarray:
+        # this is the final output
+        pass
+
+class Results:
+    __slots__ = ['_damaged', '_ground_truth', '_imputed']
+
+    def __init__(self, damaged, ground_truth, imputed):
+        self._damaged = damaged
+        self._ground_truth = ground_truth
+        self._imputed = imputed
+
+    @property
+    def benchmark_score(self) -> float:
+        pass
+
+    @property
+    def damaged_silhouette_score(self) -> float:
+        pass
+
+    @property
+    def imputed_silhouette_score(self) -> float:
+        pass
+
+    @property
+    def ground_truth_silhouette_score(self) -> float:
         pass

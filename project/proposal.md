@@ -17,7 +17,7 @@ Matrix imputation has been applied to audio applications specifically in an atte
 
 ### Problem Statement
 
-Restoring or repairing audio is challenging for many reasons. There are some inherent challenges with working audio including but not limited to:
+Restoring or repairing audio is challenging for many reasons. There are some inherent challenges working with damaged audio including but not limited to:
 
 - Isolation of the desired source signal
 - Identifying and removing noise
