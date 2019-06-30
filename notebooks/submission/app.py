@@ -7,7 +7,7 @@ import pandas as pd
 import scipy
 
 import librosa
-import mira_eval
+import mir_eval
 from impyute.imputation.cs import fast_knn
 
 #Increase the recursion limit of the OS
