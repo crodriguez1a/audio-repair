@@ -1,18 +1,14 @@
 import tensorflow as tf
-from keras.callbacks import TensorBoard
 from keras import regularizers
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, Flatten
+from keras.layers import Input, Dense, UpSampling2D
 from keras.models import Model
 from keras import backend as K
-import librosa
 
 import numpy as np
 import math
 from scipy.fftpack import rfft, irfft
 from tensorflow.contrib import ffmpeg # TODO upgrade to tensorflow_io: https://github.com/tensorflow/io
 from tensorflow.contrib.framework.python.ops import audio_ops
-from functools import partial
-import librosa.display as librosa_display
 
 # Inspired by: https://blog.goodaudience.com/using-tensorflow-autoencoders-with-music-f871a76122ba
 
@@ -21,7 +17,11 @@ class AudioSegment:
         # TODO hyperparams
         self.tf_sess = tf_sess
 
-    def decode_wav(self, path:str) -> tuple:
+    def analyze_wav(self, path:str) -> tuple:
+        """
+        Decode audio, represent each channel
+        as fourier features
+        """
         audio_binary = tf.io.read_file(path)
 
         # Initialize tf decoder
@@ -42,7 +42,11 @@ class AudioSegment:
         return ([wv_ch1], [wv_ch2])
 
     def autoencoder(self, input_size) -> tuple:
-        # TODO: find a place for this
+        """
+        De-noising Autoencoder
+        # Credit: https://medium.com/datadriveninvestor/deep-autoencoder-using-keras-b77cd3e8be95
+        """
+        # TODO: move this
         epochs = 1000
         batches = 10
         l2 = 0.0001
@@ -55,13 +59,13 @@ class AudioSegment:
         hidden_2_units = int(input_size/6)
         hidden_3_units = int(input_size/8)
 
+        # input audio
         X = Input(shape=(inputs,))
 
-        # TODO: Understand the regularization choice
+        # TODO: Decide on regularization
         l2_regularizer = regularizers.l2(l2)
 
-        # TODO why the partial here?
-        # Parametrize units
+        # encoded and decoded layer for the autoencoder
         encoded = Dense(units=inputs,
                         activation='elu',
                         kernel_regularizer=l2_regularizer,)(X)
@@ -71,22 +75,27 @@ class AudioSegment:
 
         decoded = Dense(units=hidden_1_units, activation='elu')(encoded)
         decoded = Dense(units=hidden_2_units, activation='elu')(decoded)
-
-        # decoded = Flatten()(decoded)
-
         decoded = Dense(units=input_size, activation='sigmoid')(decoded)
 
+        # Building autoencoder
         autoencoder = Model(X, decoded)
+
+        #extracting encoder
         encoder = Model(X, encoded)
 
         return (autoencoder, encoder)
 
     @staticmethod
     def reshape_channel(channel:list, inputs:int) -> np.ndarray:
+        """
+        TODO: annotate
+        """
         return np.array(channel[:inputs]).reshape(1, inputs)
 
     def reshape_channels(self, wav_arr_ch1:list, wav_arr_ch2:list, inputs:int) -> tuple:
-
+        """
+        TODO: annotate
+        """
         ch1:list = [self.reshape_channel(wav_arr_ch1, inputs)]
         ch2:list = [self.reshape_channel(wav_arr_ch2, inputs)]
 
@@ -94,6 +103,10 @@ class AudioSegment:
 
     @staticmethod
     def synthesize_audio(ch1, ch2) -> np.ndarray:
+        """
+        Re-combine channels,
+        inverse discrete Fourier transform
+        """
         ch1 = irfft(np.hstack(np.hstack(ch1)))
         ch2 = irfft(np.hstack(np.hstack(ch2)))
 
@@ -102,7 +115,9 @@ class AudioSegment:
         return audio_arr
 
     def write_audio(self, audio_arr, path:str='out.wav'):
-
+        """
+        Write audio array to file
+        """
         cols = 2
         rows = math.floor(len(audio_arr)/cols)
         audio_to_encode = audio_arr.reshape(rows, cols)
@@ -123,13 +138,13 @@ if __name__ == '__main__':
     with tf.compat.v1.Session() as sess:
         segment = AudioSegment(sess)
 
-        # should this output nump arrays and not lists?
-        wv_ch1, wv_ch2 = segment.decode_wav(noisy_path)
+        # TODO re-visit nested arrays
+        wv_ch1, wv_ch2 = segment.analyze_wav(noisy_path)
         input_size:int = wv_ch1[0].size
         print(input_size)
         print(wv_ch1[0].shape, wv_ch1[0].size, wv_ch2[0].shape, wv_ch2[0].size)
 
-        # find out how much this reshape is needed
+        # TODO re-visit nested arrays
         ch1_song, ch2_song = segment.reshape_channels(wv_ch1, wv_ch2, inputs=input_size)
         print(ch1_song.shape, ch2_song.shape,)
 
@@ -140,7 +155,7 @@ if __name__ == '__main__':
 
         autoencoder.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        # why this shape
+        # re-visit/explain shape
         total_songs = np.hstack([ch1_song, ch2_song])
         x_batch = total_songs[0]
 
@@ -156,6 +171,5 @@ if __name__ == '__main__':
         #
         # encoded_audio = encoder.predict(x_batch)
         #
-        # # TODO include synthesize_audio - https://github.com/wezleysherman/TFMusicAudioEncoder/blob/95f63bfc1310915a40821dc948472f78f24414ca/process_data.py#L54
         #
         # predicted = autoencoder.predict(x_batch)
