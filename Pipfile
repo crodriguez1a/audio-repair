@@ -8,13 +8,15 @@ verify_ssl = true
 [packages]
 jupyter = "*"
 numpy = "*"
-librosa = "*"
 matplotlib = "*"
 pandas = "*"
 hdbscan = "*"
 seaborn = "*"
 mir-eval = "*"
 impyute = "*"
+tensorflow = "*"
+keras = "*"
+librosa = "==0.7.0rc1"
 
 [requires]
 python_version = "3.7"
