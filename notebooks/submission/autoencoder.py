@@ -12,36 +12,13 @@ from tensorflow.contrib.framework.python.ops import audio_ops
 
 # Inspired by: https://blog.goodaudience.com/using-tensorflow-autoencoders-with-music-f871a76122ba
 
-class AudioSegment:
-    def __init__(self, tf_sess, params={}):
-        # TODO hyperparams
-        self.tf_sess = tf_sess
+class AutoEncoder:
+    __slots__ = ['_params']
 
-    def analyze_wav(self, path:str) -> tuple:
-        """
-        Decode audio, represent each channel
-        as fourier features
-        """
-        audio_binary = tf.io.read_file(path)
+    def __init__(self, hyper_params:dict={}):
+        self._params = hyper_params
 
-        # Initialize tf decoder
-        decoder = audio_ops.decode_wav(audio_binary,
-                                       desired_channels=2)
-
-        # TODO: requires a session to evaluate
-        self.sample_rate:int = decoder.sample_rate.eval(session=self.tf_sess)
-        audio:np.ndarray = decoder.audio.eval(session=self.tf_sess)
-
-        # represent as numpy array
-        audio:np.ndarray = np.array(audio)
-
-        # represent each channel as discrete fourier features
-        wv_ch1:np.ndarray = rfft(audio[:,0])
-        wv_ch2:np.ndarray = rfft(audio[:,1])
-
-        return ([wv_ch1], [wv_ch2])
-
-    def autoencoder(self, input_size) -> tuple:
+    def layers(self, input_size, unit_sizes:tuple=(128, 64, 32, 64, 128)) -> tuple:
         """
         De-noising Autoencoder
         # Credit: https://medium.com/datadriveninvestor/deep-autoencoder-using-keras-b77cd3e8be95
@@ -55,9 +32,7 @@ class AudioSegment:
         batch_size = 1 # 50
 
         inputs = input_size
-        hidden_1_units = int(input_size/4)
-        hidden_2_units = int(input_size/6)
-        hidden_3_units = int(input_size/8)
+        sz1, sz2, sz3, sz4, sz5 = unit_sizes
 
         # input audio
         X = Input(shape=(inputs,))
@@ -66,15 +41,15 @@ class AudioSegment:
         l2_regularizer = regularizers.l2(l2)
 
         # encoded and decoded layer for the autoencoder
-        encoded = Dense(units=inputs,
+        encoded = Dense(units=sz1,
                         activation='elu',
                         kernel_regularizer=l2_regularizer,)(X)
 
-        encoded = Dense(units=hidden_1_units, activation='elu')(encoded)
-        encoded = Dense(units=hidden_2_units, activation='relu')(encoded)
+        encoded = Dense(units=sz2, activation='elu')(encoded)
+        encoded = Dense(units=sz3, activation='elu')(encoded)
 
-        decoded = Dense(units=hidden_1_units, activation='elu')(encoded)
-        decoded = Dense(units=hidden_2_units, activation='elu')(decoded)
+        decoded = Dense(units=sz4, activation='elu')(encoded)
+        decoded = Dense(units=sz5, activation='elu')(decoded)
         decoded = Dense(units=input_size, activation='sigmoid')(decoded)
 
         # Building autoencoder
@@ -85,91 +60,42 @@ class AudioSegment:
 
         return (autoencoder, encoder)
 
-    @staticmethod
-    def reshape_channel(channel:list, inputs:int) -> np.ndarray:
-        """
-        TODO: annotate
-        """
-        return np.array(channel[:inputs]).reshape(1, inputs)
-
-    def reshape_channels(self, wav_arr_ch1:list, wav_arr_ch2:list, inputs:int) -> tuple:
-        """
-        TODO: annotate
-        """
-        ch1:list = [self.reshape_channel(wav_arr_ch1, inputs)]
-        ch2:list = [self.reshape_channel(wav_arr_ch2, inputs)]
-
-        return (np.array(ch1), np.array(ch2))
-
-    @staticmethod
-    def synthesize_audio(ch1, ch2) -> np.ndarray:
-        """
-        Re-combine channels,
-        inverse discrete Fourier transform
-        """
-        ch1 = irfft(np.hstack(np.hstack(ch1)))
-        ch2 = irfft(np.hstack(np.hstack(ch2)))
-
-        audio_arr = np.hstack(np.array((ch1, ch2)).T)
-
-        return audio_arr
-
-    def write_audio(self, audio_arr, path:str='out.wav'):
-        """
-        Write audio array to file
-        """
-        cols = 2
-        rows = math.floor(len(audio_arr)/cols)
-        audio_to_encode = audio_arr.reshape(rows, cols)
-
-        wav_encoder = ffmpeg.encode_audio(audio_to_encode,
-                                          file_format='wav',
-                                          samples_per_second=self.sample_rate)
-
-        f = open(path, 'wb')
-        # TODO figure this out wihout a tf session
-        wav_file = self.tf_sess.run(wav_encoder)
-        f.write(wav_file)
 
 if __name__ == '__main__':
-    noisy_path = 'data/audio_sources/wav/damaged/izotope_rustle_samp.wav'
-    gt_path = 'data/audio_sources/wav/gt/izotope_rustle.wav'
 
-    with tf.compat.v1.Session() as sess:
-        segment = AudioSegment(sess)
+    from .audio_segment import AudioSegment
 
-        # TODO re-visit nested arrays
-        wv_ch1, wv_ch2 = segment.analyze_wav(noisy_path)
-        input_size:int = wv_ch1[0].size
-        print(input_size)
-        print(wv_ch1[0].shape, wv_ch1[0].size, wv_ch2[0].shape, wv_ch2[0].size)
+    path = 'data/audio_sources/wav/damaged/izotope_rustle_samp.wav'
+    segment:AudioSegment = AudioSegment(path)
 
-        # TODO re-visit nested arrays
-        ch1_song, ch2_song = segment.reshape_channels(wv_ch1, wv_ch2, inputs=input_size)
-        print(ch1_song.shape, ch2_song.shape,)
+    mfcc:np.ndarray = segment.mfcc_features
+    input_size:int = mfcc.T[:,1].size
 
-        autoencoder, encoder = segment.autoencoder(input_size)
+    ae:AutoEncoder = AutoEncoder()
+    autoencoder, encoder = ae.layers(input_size)
 
-        autoencoder.summary()
-        encoder.summary()
+    autoencoder.summary()
+    encoder.summary()
 
-        autoencoder.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    autoencoder.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        # re-visit/explain shape
-        total_songs = np.hstack([ch1_song, ch2_song])
-        x_batch = total_songs[0]
+    # training
+    # TODO: train test validate then?
+    autoencoder.fit(mfcc, mfcc,
+                    epochs=5,# 50,
+                    batch_size=256,
+                    shuffle=True,
+                    validation_data=(mfcc, mfcc)) # TODO validation set
 
-        wav_output = segment.synthesize_audio(ch1_song, ch2_song)
+    encoded_audio = encoder.predict(mfcc)
 
-        # training
-        # what is train test then?
-        # autoencoder.fit(x_batch, x_batch,
-        #                 epochs=5,# 50,
-        #                 batch_size=256,
-        #                 shuffle=True,
-        #                 validation_data=(x_batch, x_batch)) # TODO validation set
-        #
-        # encoded_audio = encoder.predict(x_batch)
-        #
-        #
-        # predicted = autoencoder.predict(x_batch)
+    predicted = autoencoder.predict(mfcc)
+
+    mfcc_2_audio:np.ndarray = segment.mfcc_to_audio(predicted)
+
+
+    print('segment.audio.shape', segment.audio.shape)
+    print('mfcc.shape', mfcc.shape)
+    print('encoded_audio.shape', encoded_audio.shape)
+    print('predicted.shape', predicted.shape)
+    print('mfcc_2_audio.shape', mfcc_2_audio.shape)
