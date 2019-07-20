@@ -34,45 +34,71 @@ Explain Mean score
 
 A silhouette score will be used to analyze the repaired audio. The silhouette value is a measure of how similar an object is to its own cluster (cohesion) compared to other clusters (separation). The silhouette ranges from −1 to +1, where a high value indicates that the object is well matched to its own cluster and poorly matched to neighboring clusters.
 
-A silhouette score close to `1` is valuable because it should indicate that the repaired audio has clearly defined clusters representing only the desired audio (e.g., a voice) and some naturally occurring background noise (e.g, the acoustics of a room).
+A silhouette score closer to `+1` is valuable because it should indicate that the repaired audio has clearly defined clusters representing only the desired audio (e.g., a voice) and some naturally occurring background noise (e.g, the acoustics of a room).
 
 ## II. Analysis
 _(approx. 2-4 pages)_
 
 ### Data Exploration
 
-Spectral Analysis
+Each audio sample selected includes one or more sections of perceieved damaged audio. For the purposed of this analysis, "damage" is understood as audio perceived as anything other than speech or naturally occuring ambient sound (e.g, rustling, pops, static).
 
-A sound spectrogram (or sonogram) is a visual representation of an acoustic signal. To oversimplify things a fair amount, a Fast Fourier transform is applied to an electronically recorded sound. This analysis essentially separates the frequencies and amplitudes of its component simplex waves. The result can then be displayed visually, with degrees of amplitude (represented light-to-dark, as in white=no energy, black=lots of energy), at various frequencies (usually on the vertical axis) by time (horizontal).
+The inputs for this analysis are loaded from Wav formatted audio files and are initially represented as a floating point time series. Sampling rate is explicitly set to `None` in order to preserve the native sampling rate. Also, duration is normalized between the damaged and repaired samples to produce identical input size and shape. 
 
-Depending on the size of the Fourier analysis window, different levels of frequency/time resolution are achieved. A long window resolves frequency at the expense of time—the result is a narrow band spectrogram, which reveals individual harmonics (component frequencies), but smears together adjacent 'moments'. If a short analysis window is used, adjacent harmonics are smeared together, but with better time resolution. The result is a wide band spectrogram in which individual pitch periods appear as vertical lines (or striations), with formant structure. Generally, wide band spectrograms are used in spectrogram reading because they give us more information about what's going on in the vocal tract, for reasons which should become clear as we go.
+```
+librosa.load(wav_path, sr=None, duration=duration) # preserve native sampling rate
+```
 
-(1)
+Subsequently, features are extracted leveraging a computed mel-scaled spectrogram. 
 
-1. https://home.cc.umanitoba.ca/~robh/howto.html#intro
+```
+librosa.feature.melspectrogram(y=y, sr=sr)
+```
 
-A spectrogram is a visual way of representing the signal strength, or “loudness”, of a signal over time at various frequencies present in a particular waveform.
+The mel scale is a perceptual scale of pitches judged by listeners to be equal in distance from one another [1]. Mel was chosen for two reasons. The first, is that the goal is to isolate and replace human perceived damaged portions of audio. The second reason is more technical. Librosa's implementation of the mel-scale features also includes an inverse transformation from features back to audio. Including a sonification with the overall analysis of the solution allows for a demonstrative “evaluation by ear”, albeit subjective.
 
-1. https://pnsn.org/spectrograms/what-is-a-spectrogram
+```
+librosa.feature.inverse.mel_to_audio(M, sr=sr, length=len(original)
+```
 
-Phase
-Phase denotes a particular point in the cycle of a waveform, measured as an angle in degrees. It is normally not an audible characteristic of a single wave (but can be when we use very low-frequency waves as controls in synthesis). Phase is a very important factor in the interaction of one wave with another, either acoustically or electronically.
-http://www.indiana.edu/~emusic/etext/acoustics/chapter1_phase2.shtml
-
-
-In this section, you will be expected to analyze the data you are using for the problem. This data can either be in the form of a dataset (or datasets), input data (or input files), or even an environment. The type of data should be thoroughly described and, if possible, have basic statistics and information presented (such as discussion of input features or defining characteristics about the input or environment). Any abnormalities or interesting qualities about the data that may need to be addressed have been identified (such as features that need to be transformed or the possibility of outliers). Questions to ask yourself when writing this section:
-- _If a dataset is present for this problem, have you thoroughly discussed certain features about the dataset? Has a data sample been provided to the reader?_
-- _If a dataset is present for this problem, are statistics about the dataset calculated and reported? Have any relevant results from this calculation been discussed?_
-- _If a dataset is **not** present for this problem, has discussion been made about the input space or input data for your problem?_
-- _Are there any abnormalities or characteristics about the input space or dataset that need to be addressed? (categorical variables, missing values, outliers, etc.)_
 
 ### Exploratory Visualization
-In this section, you will need to provide some form of visualization that summarizes or extracts a relevant characteristic or feature about the data. The visualization should adequately support the data being used. Discuss why this visualization was chosen and how it is relevant. Questions to ask yourself when writing this section:
-- _Have you visualized a relevant characteristic or feature about the dataset or input data?_
-- _Is the visualization thoroughly analyzed and discussed?_
-- _If a plot is provided, are the axes, title, and datum clearly defined?_
+
+The first sample selected for analysis is of human vocals mixed with various distortion. A side-by-side mel-spectral visualization of the selected pair of inputs further suggests the auditory perceived damaged. The areas in bright yellow represent speech and are vividly defined in the ground truth sample. Whereas, the damaged sample is not as vivid and peaks of sound are clearly present in windows of time that should be silent (dark purple), as apparent in the ground truth example. 
+
+**Fig. 1** A side-by-side comparison of mel spectograms from the damaged and repaired samples respectively
+
+![workflow](assets/damaged_rustle.png "damaged")
+![workflow](assets/ground_truth_rustle.png "ground truth")
+
+Of course, in a real world application, a repaired sample would not be available to these types of comparisons. A more objective analysis would include defining a *damaged* window of time as a statistical anomaly. Of course, this approach depends on the assumption that the sample has enough [perceived] normal audio to establish a baseline for comparison from within the sample itself.
+
+In order to establish a baseline for the perceived normal audio, we'll look more closely as the mel features extracted from the samples. First applying applying a simple technique [2] to isolate the more pertinent auditory data.
+
+**Fig. 2** Separation of background and foreground information
+
+![workflow](assets/background_foreground.png "Background / Foreground")
 
 ### Algorithms and Techniques
+
+With the more important information isolated, we can now use that as input to a clustering algorithm that should help us help distinguish between normal and damaged data.
+
+[Finding Clusters with HDBScan](https://hdbscan.readthedocs.io/en/latest/)
+
+HDBSCAN is a recent algorithm developed by some of the same people who write the original DBSCAN paper.[3]
+
+Intuitively, the expectation is to find only a few clusters of varying densities. With HDBScan, we have granular control in defining the smallest grouping size that should be considered a cluster. We can set the `min_cluster_size` to the very minimum which should in turn, surface the maximum amount of clusters. If our intuition is correct, the output should yield only two or three clusters representing the primary signal, the damaged signal, and potentially some remaining ambient noise. 
+
+Metrics
+- Kmeans
+- 
+Anomaly Detection
+- Isolation Forest
+
+Imputation
+- KNN
+
+
 In this section, you will need to discuss the algorithms and techniques you intend to use for solving the problem. You should justify the use of each one based on the characteristics of the problem and the problem domain. Questions to ask yourself when writing this section:
 - _Are the algorithms you will use, including any default variables/parameters in the project clearly defined?_
 - _Are the techniques to be used thoroughly discussed and justified?_
@@ -156,3 +182,9 @@ In this section, you will need to provide discussion as to how one aspect of the
 - Are all the resources used for this project correctly cited and referenced?
 - Is the code that implements your solution easily readable and properly commented?
 - Does the code execute without error and produce results similar to those reported?
+
+### References
+
+1. https://en.wikipedia.org/wiki/Mel_scale
+2. https://librosa.github.io/librosa/0.7.0/auto_examples/plot_vocal_separation.html
+3. https://hdbscan.readthedocs.io/en/latest/
