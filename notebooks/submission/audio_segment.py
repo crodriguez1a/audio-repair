@@ -4,9 +4,14 @@ import librosa
 class AudioSegment:
     __slots__ = ['_path', '_audio', '_sr']
 
-    def __init__(self, path:str):
+    def __init__(self,
+                 path:str,
+                 preserve_sampling:bool=True,
+                 duration:float=1.,):
+
         self._path = path
-        audio, sample_rate = librosa.load(path)
+        sr:int = None if preserve_sampling else 22050 # librosa default
+        audio, sample_rate = librosa.load(path, sr=None, duration=duration,)
         self._audio = audio
         self._sr = sample_rate
 
@@ -19,7 +24,7 @@ class AudioSegment:
         return self._audio
 
     @property
-    def mfcc_features(self) -> np.ndarray:
+    def mfcc_features(self, htk:bool=True) -> np.ndarray:
         """
         Mel-frequency cepstral coefficients (MFCCs)
         are coefficients that collectively make up an MFC[1].
@@ -35,24 +40,34 @@ class AudioSegment:
         """
         y:np.ndarray = self._audio
         sr:int = self._sr
-        return librosa.feature.mfcc(y=y, sr=sr)
+        # HTK is a toolkit for research in automatic speech recognition (http://htk.eng.cam.ac.uk/docs/faq.shtml)
+        return librosa.feature.mfcc(y=y, sr=sr, htk=htk)
 
     def mfcc_to_audio(self, M:np.ndarray) -> np.ndarray:
         sr:int = self._sr
         original:np.ndarray = self._audio
         return librosa.feature.inverse.mfcc_to_audio(M, sr=sr, length=len(original))
 
+    def _to_mel(self, params:dict={}) -> np.ndarray:
+        # abstract librosa to provide additional params when needed
+        return librosa.feature.melspectrogram(**params)
+
     @property
     def mel_features(self) -> np.ndarray:
         """
+        Magnitude spectrogram S is first computed, and then mapped onto the Mel Scale
+
         The mel scale, named by Stevens, Volkmann, and Newman in 1937,[1]
         is a perceptual scale of pitches judged by listeners to be equal
         in distance from one another.
-        Source: https://en.wikipedia.org/wiki/Mel_scale
+
+        Sources:
+        https://librosa.github.io/librosa/generated/librosa.feature.melspectrogram.html#librosa.feature.melspectrogram
+        https://en.wikipedia.org/wiki/Mel_scale
         """
         y:np.ndarray = self._audio
         sr:int = self._sr
-        return librosa.feature.melspectrogram(y=y, sr=sr)
+        return self._to_mel({'y':y, 'sr':sr})
 
     def mel_to_audio(self, M:np.ndarray) -> np.ndarray:
         sr:int = self._sr
