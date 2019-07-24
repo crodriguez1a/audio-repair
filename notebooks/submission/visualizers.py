@@ -34,10 +34,10 @@ def vis_spec(spec:np.ndarray,
 
     plt.figure(figsize=figsize)
     libro_display.specshow(librosa.power_to_db(spec, ref=np.max),
-                                                 y_axis=y_axis,
-                                                 fmax=fmax,
-                                                 x_axis=x_axis,
-                                                 sr=sr,)
+                                               y_axis=y_axis,
+                                               fmax=fmax,
+                                               x_axis=x_axis,
+                                               sr=sr,)
     plt.colorbar(format='%+2.0f dB')
     plt.title(title)
     plt.tight_layout()

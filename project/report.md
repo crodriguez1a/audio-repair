@@ -105,8 +105,8 @@ The resulting imputed array produced a silhouette score `0.602`.
 
 |  | Silhouette Score | Clusters |
 |-----|-----|-----|
-| **Damaged** |`0.922`| 2  
-| **Ground Truth** | `0.937` | 2
+| **Damaged** |`0.632`| 2  
+| **Ground Truth** | `0.667` | 2
 | **Benchmark** | `0.8903` | 2
 
 Of course, the benchmark is only as good as the clustering analysis and outlier detection used to identify values that were to be imputed. Simply using a cross-sectional imputation of approach to re-value outliers (without any optimization to outlier detection) introduced a lot of noise and produced poorer clusters definition than the original damaged sample.
@@ -117,15 +117,15 @@ _(approx. 3-5 pages)_
 
 ### Data Preprocessing
 
-Before performing any meaningful analysis of this data, various pre-processing steps were applied.
+Before performing any meaningful analysis of this data, various pre-processing steps were applied (`Pre-Processing` notebook).
 
-1. Normalized damaged and ground-truth inputs respectively for waveform length and array size
+**Normalized damaged and ground-truth inputs respectively for waveform length and array size**
 
   - Visual trimming of the waveforms with Audacity software to guarantee identical starting and stopping points
 
   - Explicitly setting a normalized duration when loading the wav files into memory to guarantee identical input array size
 
-1. Applied a background noise filter to spectral input effectively to separate out data points with less perceived auditory value
+**Applied a background noise filter to spectral input effectively to separate out data points with less perceived auditory value**
 
   - filtering by nearest neighbors
 
@@ -134,6 +134,32 @@ Before performing any meaningful analysis of this data, various pre-processing s
   - multiply the mask by the input spectrum to separate input into foreground and background components
 
 ### Implementation
+
+Implementation can be described in a few stages:
+
+**Clustering and anomaly detection with ground-truth sample**
+
+Before attempting to identify anomalous data in the damaged sample, we can leverage the ground-truth sample to establish expectations for normal clustering and outliers.
+
+As a benchmark for clustering, partitions were first established with Kmeans. A custom search function (`search_param`) was utilized to find the optimal value for `k` with the expectation that the repaired sample should only produce `2` well-defined clusters with a silhouette score closer to one.
+
+![workflow](assets/gt_kmeans.png "KMeans Results")
+
+![workflow](assets/gt_kmeans_scatter.png "KMeans Results")
+
+As described above the GLOSH algorithm was utilized to calculate outlier scores for ground-truth. Scoring was included as part of an implementation of HDBSCAN. The larger the score the more outlier-like the point.[6] A visualization of the scoring was used as an aide in determining the a threshold for outliers.
+
+![workflow](assets/gt_outliers.png "GLOSH Outliers")
+
+With clear expectations for clustering and anomaly detection, we could now evaluate the damaged sample.
+
+
+
+Once anomalies are well defined, anomalous data is replaced with null values.
+
+Nullifed data is imputed
+
+Mel-scale features are inversed to audio time-series
 
 - describe clustering (KMeans, DBScan)
 
@@ -254,3 +280,4 @@ In this section, you will need to provide discussion as to how one aspect of the
 3. https://hdbscan.readthedocs.io/en/latest/
 4. https://towardsdatascience.com/6-different-ways-to-compensate-for-missing-values-data-imputation-with-examples-6022d9ca0779
 5. https://github.com/eltonlaw/impyute/blob/master/impyute/imputation/cs/fast_knn.py
+6. https://hdbscan.readthedocs.io/en/latest/api.html
