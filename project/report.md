@@ -105,7 +105,7 @@ The resulting imputed array produced a silhouette score `0.602`.
 
 |  | Silhouette Score | Clusters |
 |-----|-----|-----|
-| **Damaged** |`0.632`| 2  
+| **Damaged** |`0.632`| 3 
 | **Ground Truth** | `0.667` | 2
 | **Benchmark** | `0.8903` | 2
 
@@ -151,7 +151,29 @@ As described above the GLOSH algorithm was utilized to calculate outlier scores 
 
 ![workflow](assets/gt_outliers.png "GLOSH Outliers")
 
-With clear expectations for clustering and anomaly detection, we could now evaluate the damaged sample.
+![workflow](assets/gt_outliers_scatter.png "GLOSH Outliers")
+
+Suprisingly, in applying clustering with HDBSCAN, it became apparent that the two algorithms had produced quite different results. 
+
+![workflow](assets/d_hdb_scores.png "GLOSH Outliers")
+
+*Fig. A: Clusters defined with HDBSCAN*
+![workflow](assets/d_hdb_scatter.png "GLOSH Outliers")
+
+*Fig. A: Clusters defined with K-Means*
+![workflow](assets/d_kmeans_scatter.png "GLOSH Outliers")
+
+Clustering with HDBSCAN did infact define clusters with varying density, but did not score as well. Assuming that silhouette score is suitable metric to compare across the two algorithms, K-means appeared to have outperformed its more recent counterpart.
+
+This finding would later aide in determining which clustering algorithm was better suited to separate auditory damage from normal audio.
+
+With some expectation for clustering and anomaly detection, the damaged sample was evaluated in the same way.
+
+
+
+![workflow](assets/d_outliers_scatter.png "GLOSH Outliers")
+
+[Future] sonify the areas that were indentified as clusters
 
 
 
