@@ -101,7 +101,7 @@ This particular [implementation](https://github.com/eltonlaw/impyute/blob/master
 
 The benchmark model was be produced using a simple *frequent value* imputation strategy. Missing values were replaced naively using the most frequent value of each column in which the missing values were located.
 
-The resulting imputed array produced a silhouette score `0.602`.
+The resulting imputed array produced a silhouette score of ~`-0.5`.
 
 |  | Silhouette Score | Optimal Clusters |
 |-----|-----|-----|
@@ -226,14 +226,25 @@ Adjustments to these parameters had very little effect on the resulting silhouet
 
 ![workflow](assets/imputed_s_score.png "Imputed S-Score")
 
-Unsurprisingly, tuning the imputation resulted in no improvement possibly due to the lack of and normal data surrounding the time-steps identified during clustering. In other words, the clusters we chose to impute might have represented too much of our sample to succesfully impute with information from its neighbors. 
+Tuning the imputation resulted in no improvement possibly due to the lack of and normal data surrounding the time-steps identified during clustering. In other words, the clusters we chose to impute might have represented too much of our sample to succesfully impute with information from its neighbors.
+
+Apart from KNN, the most succesful imputer by far was the MICE algorithm (Multivariate Imputation by Chained Equations). MICE uses a chained equation approach to perform multiple imputations across the different variables. 
+
+Since the mel-scale produces 128 unique features, an algorithm optimized for multivariate imputation was better suited for task.
+
+With this in mind, I discovered another iterative and multivariate optimized experimental algorithm from sklearn implemented in the IterativeImputer class. This approach models each feature with missing values as a function of other features, and uses that estimate for imputation. It does so in an iterative fashion, and then is repeated for `max_iter` imputation rounds. The results of the final imputation round are returned. [9]
+
 
 ## IV. Results
 _(approx. 2-3 pages)_
 
 ### Model Evaluation and Validation
 
+Ultimately, the multivariate imputation using a round-robin approach produced the most improved results.
 
+![workflow](assets/final_score.png "Final Imputed S-Score")
+
+Processing brand new inputs
 
 - describe evaluation with other inputs
 
@@ -249,9 +260,6 @@ In this section, the final model and any supporting qualities should be evaluate
 
 ### Justification
 
-- _Are the final results found stronger than the benchmark result reported earlier?_
-- _Have you thoroughly analyzed and discussed the final solution?_
-- _Is the final solution significant enough to have solved the problem?_
 
 In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
 - _Are the final results found stronger than the benchmark result reported earlier?_
@@ -319,3 +327,4 @@ In this section, you will need to provide discussion as to how one aspect of the
 6. https://hdbscan.readthedocs.io/en/latest/api.html
 7. https://impyute.readthedocs.io/en/latest/_modules/impyute/imputation/cs/central_tendency.html#mode
 8. https://en.wikipedia.org/wiki/Mel-frequency_cepstrum
+9. https://scikit-learn.org/stable/modules/impute.html
