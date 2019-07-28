@@ -103,11 +103,11 @@ The benchmark model was be produced using a simple *frequent value* imputation s
 
 The resulting imputed array produced a silhouette score `0.602`.
 
-|  | Silhouette Score | Clusters |
+|  | Silhouette Score | Optimal Clusters |
 |-----|-----|-----|
-| **Damaged** |`0.632`| 3 
-| **Ground Truth** | `0.667` | 2
-| **Benchmark** | `0.8903` | 2
+| **Damaged** |`0.4332`| 3 
+| **Ground Truth** | `0.5319` | 3
+| **Benchmark** | `-0.5505` | 3
 
 Of course, the benchmark is only as good as the clustering analysis and outlier detection used to identify values that were to be imputed. Simply using a cross-sectional imputation of approach to re-value outliers (without any optimization to outlier detection) introduced a lot of noise and produced poorer clusters definition than the original damaged sample.
 
@@ -137,7 +137,7 @@ Before performing any meaningful analysis of this data, various pre-processing s
 
 Implementation can be described in a few stages:
 
-**Clustering and anomaly detection with ground-truth sample**
+**Finding Clusters**
 
 Before attempting to identify anomalous data in the damaged sample, we can leverage the ground-truth sample to establish expectations for normal clustering and outliers.
 
@@ -147,60 +147,50 @@ As a benchmark for clustering, partitions were first established with Kmeans. A 
 
 ![workflow](assets/gt_kmeans_scatter.png "KMeans Results")
 
+**Outlier Detection**
+
 As described above the GLOSH algorithm was utilized to calculate outlier scores for ground-truth. Scoring was included as part of an implementation of HDBSCAN. The larger the score the more outlier-like the point.[6] A visualization of the scoring was used as an aide in determining the a threshold for outliers.
 
 ![workflow](assets/gt_outliers.png "GLOSH Outliers")
 
 ![workflow](assets/gt_outliers_scatter.png "GLOSH Outliers")
 
-Suprisingly, in applying clustering with HDBSCAN, it became apparent that the two algorithms had produced quite different results. 
-
-![workflow](assets/d_hdb_scores.png "GLOSH Outliers")
+Suprisingly, in applying clustering with HDBSCAN, it became apparent that the two algorithms produced very different results. 
 
 *Fig. A: Clusters defined with HDBSCAN*
 ![workflow](assets/d_hdb_scatter.png "GLOSH Outliers")
 
-*Fig. A: Clusters defined with K-Means*
+*Fig. B: Clusters defined with K-Means*
 ![workflow](assets/d_kmeans_scatter.png "GLOSH Outliers")
 
-Clustering with HDBSCAN did infact define clusters with varying density, but did not score as well. Assuming that silhouette score is suitable metric to compare across the two algorithms, K-means appeared to have outperformed its more recent counterpart.
+Clustering with HDBSCAN did infact define clusters with varying density, but did not score as well. Assuming that silhouette score (measuring cohesion and likeness) is suitable metric to compare across the two algorithms, K-means appeared to have outperformed its more recent counterpart. not globular thing
 
-This finding would later aide in determining which clustering algorithm was better suited to separate auditory damage from normal audio.
+![workflow](assets/d_hdb_scores.png "GLOSH Outliers")
 
-With some expectation for clustering and anomaly detection, the damaged sample was evaluated in the same way.
+Two unique concerns arose after clustering with HDBSCAN and detecting outliers with GLOSH. 
 
+1. An identical amount of outliers were identified between the two damaged and ground-truth samples.
+2. It became apparent that the time-steps where outliers were detected did not include the auditory anomalies we were looking for. 
 
+![workflow](assets/d_outliers_over_time.png "Outliers Over Time")
 
-![workflow](assets/d_outliers_scatter.png "GLOSH Outliers")
+As a result, I would look at two possible remedies. 
 
-[Future] sonify the areas that were indentified as clusters
+1. Evaluating the imputation of secondary clusters instead of outliers
+2. Utilizing a different set of auditory features
 
+A visualization of the smaller cluster (-1 label) over time seem to align more cleanly with the time-steps that need repair. This could be an indication that this particular cluster was a better representation of time-steps that included auditory damage. Since I don't have a mathmetical way of mapping data points within clusters directly to auditory damage, I experimented with imputation of any secondary clusters, expecting that the sparser clusters were more likely to contain the time-steps with auditory damage.
 
+![workflow](assets/d_cluster_over_time.png "Outliers Over Time")
 
-Once anomalies are well defined, anomalous data is replaced with null values.
+**Imputation**
 
-Nullifed data is imputed
+In order to intentionally create missing data to be imputed, a value of `None` was assigned to any/all values found in the chosen cluster.
 
-Mel-scale features are inversed to audio time-series
+Once the values were reassigned, I leveraged the [impyute](https://impyute.readthedocs.io/en/master/) library to perform a cross-sectional imputation setting the mode to **most frequent**. This mode would substitute missing values with the mode of that column(most frequent) and in the case that there is a tie (there are multiple, most frequent values) for a column randomly pick one of them. [7]
 
-- describe clustering (KMeans, DBScan)
+With a benchmark established for imputation, I moved on to imputation with KNN (as described previously).
 
-- describe arriving at outliers (GLOSH, Kmeans)
-
-- describe re-valuing of outliers (np.where)
-
-- describe imputation of outliers (Knn)
-
-- describe silhouette scoring of imputed result
-
-- describe spectral output of imputed result
-
-- describe audio output of imputed result (inverse of mel)
-
-In this section, the process for which metrics, algorithms, and techniques that you implemented for the given data will need to be clearly documented. It should be abundantly clear how the implementation was carried out, and discussion should be made regarding any complications that occurred during this process. Questions to ask yourself when writing this section:
-- _Is it made clear how the algorithms and techniques were implemented with the given datasets or input data?_
-- _Were there any complications with the original metrics or techniques that required changing prior to acquiring a solution?_
-- _Was there any part of the coding process (e.g., writing complicated functions) that should be documented?_
 
 ### Refinement
 
@@ -303,3 +293,4 @@ In this section, you will need to provide discussion as to how one aspect of the
 4. https://towardsdatascience.com/6-different-ways-to-compensate-for-missing-values-data-imputation-with-examples-6022d9ca0779
 5. https://github.com/eltonlaw/impyute/blob/master/impyute/imputation/cs/fast_knn.py
 6. https://hdbscan.readthedocs.io/en/latest/api.html
+7. https://impyute.readthedocs.io/en/latest/_modules/impyute/imputation/cs/central_tendency.html#mode
