@@ -18,6 +18,7 @@ impyute = "*"
 tensorflow = "*"
 keras = "*"
 librosa = "==0.7.0rc1"
+datawig = "*"
 
 [requires]
 python_version = "3.7"

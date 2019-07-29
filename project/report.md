@@ -169,7 +169,7 @@ Suprisingly, in applying clustering with HDBSCAN, it became apparent that the tw
 
 Clustering with HDBSCAN did infact define clusters with varying density, but did not score as well. Assuming that silhouette score (measuring cohesion and likeness) is suitable metric to compare across the two algorithms, K-means appeared to have outperformed its more recent counterpart. not globular thing
 
-**Fig. 5** HDBSCAN Silhouette Score
+**Fig. 8** HDBSCAN Silhouette Score
  
 ![workflow](assets/d_hdb_scores.png "GLOSH Outliers")
 
@@ -178,7 +178,7 @@ Two unique concerns arose after clustering with HDBSCAN and detecting outliers w
 1. An identical amount of outliers were identified between the two damaged and ground-truth samples.
 2. It became apparent that the time-steps where outliers were detected did not include the auditory anomalies we were looking for. 
 
-**Fig. 6** Time-steps containing outliers
+**Fig. 9** Time-steps containing outliers
 
 ![workflow](assets/d_outliers_over_time.png "Outliers Over Time")
 
@@ -189,7 +189,7 @@ As a result, I would look at two possible remedies.
 
 A visualization of the smaller cluster (-1 label) over time seem to align more cleanly with the time-steps that need repair. This could be an indication that this particular cluster was a better representation of time-steps that included auditory damage. Since I don't have a mathmetical way of mapping data points within clusters directly to auditory damage, I experimented with imputation of any secondary clusters, expecting that the sparser clusters were more likely to contain the time-steps with auditory damage.
 
-**Fig. 7** Time-steps belonging to cluster with label of `-1` 
+**Fig. 10** Time-steps belonging to cluster with label of `-1` 
 
 ![workflow](assets/d_cluster_over_time.png "Outliers Over Time")
 
@@ -199,13 +199,13 @@ In order to intentionally create missing data to be imputed, a value of `None` w
 
 Once the values were reassigned, I leveraged the [impyute](https://impyute.readthedocs.io/en/master/) library to perform a cross-sectional imputation setting the mode to **most frequent**. This mode would substitute missing values with the mode of that column(most frequent) and in the case that there is a tie (there are multiple, most frequent values) for a column randomly pick one of them. [7]
 
-**Fig. 8** Spectrogram of repaired sample using "Most Frequent"
+**Fig. 11** Spectrogram of repaired sample using "Most Frequent"
 
 ![workflow](assets/imputed_most_freq.png "Most Frequent")
 
 With a benchmark established for imputation, I moved on to imputation with KNN (as described previously).
 
-**Fig. 9** Spectrogram of repaired sample using KNN 
+**Fig. 12** Spectrogram of repaired sample using KNN 
 
 ![workflow](assets/imputed_knn.png "Most Frequent")
 
@@ -224,6 +224,8 @@ The following adujstments were applied:
 
 Adjustments to these parameters had very little effect on the resulting silhouette score.
 
+**Fig. 13** S-Score after adjustments
+
 ![workflow](assets/imputed_s_score.png "Imputed S-Score")
 
 Tuning the imputation resulted in no improvement possibly due to the lack of and normal data surrounding the time-steps identified during clustering. In other words, the clusters we chose to impute might have represented too much of our sample to succesfully impute with information from its neighbors.
@@ -232,7 +234,7 @@ Apart from KNN, the most succesful imputer by far was the MICE algorithm (Multiv
 
 Since the mel-scale produces 128 unique features, an algorithm optimized for multivariate imputation was better suited for task.
 
-With this in mind, I discovered another iterative and multivariate optimized experimental algorithm from sklearn implemented in the IterativeImputer class. This approach models each feature with missing values as a function of other features, and uses that estimate for imputation. It does so in an iterative fashion, and then is repeated for `max_iter` imputation rounds. The results of the final imputation round are returned. [9]
+With this in mind, I discovered another iterative and multivariate optimized experimental algorithm from sklearn implemented in the IterativeImputer class. This approach models each feature with missing values as a function of other features, and uses that estimate for imputation. It does so in an iterative fashion, and then is repeated for `max_iter` imputation rounds. The results of the final imputation round are returned. [8]
 
 
 ## IV. Results
@@ -242,80 +244,91 @@ _(approx. 2-3 pages)_
 
 Ultimately, the multivariate imputation using a round-robin approach produced the most improved results.
 
+**Fig. 13** Results from iterative imputation
+
 ![workflow](assets/final_score.png "Final Imputed S-Score")
 
-Processing brand new inputs
+Processing a brand new input yielded very similar results and scores, but ultimately the solution fails in that statistical differences in time-steps do not directly correlate to auditory differences when interpreting audio with Mel features.
 
-- describe evaluation with other inputs
+Our solution is repeatable and dependable in its imputation of data. The solution can generally find and replace clusters across various inputs albeit replacing valuable auditory data unnecessarily.
 
-- describe how the process is or is not successful when repeated with new inputs
-
-- describe how the process would need to change to accommodate different types of inputs
-
-In this section, the final model and any supporting qualities should be evaluated in detail. It should be clear how the final model was derived and why this model was chosen. In addition, some type of analysis should be used to validate the robustness of this model and its solution, such as manipulating the input data or environment to see how the model’s solution is affected (this is called sensitivity analysis). Questions to ask yourself when writing this section:
-- _Is the final model reasonable and aligning with solution expectations? Are the final parameters of the model appropriate?_
-- _Has the final model been tested with various inputs to evaluate whether the model generalizes well to unseen data?_
-- _Is the model robust enough for the problem? Do small perturbations (changes) in training data or the input space greatly affect the results?_
-- _Can results found from the model be trusted?_
 
 ### Justification
 
+Although the final results are significantly better than our benchmark, our metric is only valuable in measuring the statistical closeness of our reconstructed data.
 
-In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
-- _Are the final results found stronger than the benchmark result reported earlier?_
-- _Have you thoroughly analyzed and discussed the final solution?_
-- _Is the final solution significant enough to have solved the problem?_
+|  | Silhouette Score | Optimal Clusters |
+|-----|-----|-----|
+| **Damaged** |`0.4332`| 3 
+| **Ground Truth** | `0.5319` | 3
+| **Benchmark** | `-0.5472` | 3
+| **Final Solution** | `-0.0971` | 2
+
+The problem goes unsolved in that a direct quantitative connection could not be established between statistical similarity and auditory similarity.  
 
 
 ## V. Conclusion
-_(approx. 1-2 pages)_
 
 ### Free-Form Visualization
 
-- visualize the spec with the damage visible or not
+The most compelling evidence that our clustering with Mel features was not finding auditory anomalies or damage is apparent in the spectrograms below. I used a zero-constant imputation to visualize time steps that would be imputed. 
 
-- include the audio player if possible
+**Fig. 14** Failing to find auditory damage
 
-In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
-- _Have you visualized a relevant or important quality about the problem, dataset, input data, or results?_
-- _Is the visualization thoroughly analyzed and discussed?_
-- _If a plot is provided, are the axes, title, and datum clearly defined?_
+ ![workflow](assets/d_outliers_over_time.png "Outliers Over Time")
+ 
+The unatural vertical stripes in **Fig. 14** represent the time steps that would be imputed across all of their respective features. Between ~5 and 7 seconds, one can see where the auditory damage is present.
+
+**Fig. 15** Clusters over time
+
+ ![workflow](assets/d_cluster_over_time.png "Outliers Over Time")
+ 
+The smaller of the two most largest clusters **(Fig 15)** only indirectly found some of the auditory damage, but those results were not repeatable with other inputs.
+
+**Fig. 16** Alternate Input - Clusters over time
+ ![workflow](assets/val_clusters_over_time.png "Outliers Over Time")
+ 
+In **Fig. 16**, our clustering fails to partition the damaged audio that occurs before the five second mark.  
+
 
 ### Reflection
 
-- were my assumptions correct
-- were there too many initial assumptions
+The success of this methodology ultimately depends on the following:
 
+1. An input that has sufficient *normal* audio to provide to the estimator 
+1. Feature engineering resulting in a more accurate representation of auditory changes over time
+2. Clustering that accurately partitions auditory differences
+3. Mutltivariate imputation that is computationally efficient with high accuracy
+4. Validation against various inputs that include a variety of auditory damage
 
+Apart from uncovering a methodology that could work in the real-world, there were also some complexities with engineering the solution.
 
-In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
-- _Have you thoroughly summarized the entire process you used for this project?_
-- _Were there any interesting aspects of the project?_
-- _Were there any difficult aspects of the project?_
-- _Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?_
+1. Feature selection (for the sake of time) was limited to implementations that included methods for inversing spectral representation back to time-series audio.
+2. Since a ground-truth sample would not be available in the wild, I could not leverage any programmatic comparisons to ground-truth. For example, an intersection of the two samples would have been useful in isolating windows of auditory damage.   
+
 
 ### Improvement
 
-- is this a matter of improvement or a change in approach.
+Overall, I do think this approach could yield real-world results if it the solution could establish a direct quantitative relationship between statistical similarity and auditory similarity. 
 
-For that reason, I re-visited our choice of features. Applying the mel-scale did not seem to sufficiently define the characteristics that represent normal audio. It's possible that the auditory anomaly is in fact too similar to speech for a clusterer to distinguish.
+To find that link, I might start by experimenting with a different feature set. Our selected features did not seem to sufficiently define the characteristics that represent normal audio (speech in this case). It's possible that an auditory abnormality is in fact too similar (on the mel-scale) to speech for a clusterer to distinguish in a repeatable fasion. 
 
-In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
-- _Are there further improvements that could be made on the algorithms or techniques you used in this project?_
-- _Were there algorithms or techniques you researched that you did not know how to implement, but would consider using if you knew how?_
-- _If you used your final solution as the new benchmark, do you think an even better solution exists?_
+For example, MFCC (Mel-frequency cepstral coefficients) frequency bands are equally spaced on the mel scale and approximate the human auditory system's response more closely[9].
 
------------
+Secondly, I'd look at a more precise imputation strategy with deep learning. I would expect a deep learning approach would exponentially improve upon the success of the iterative multivariate imputation. A study focused on the imputation of genomic data showed some success with a denoising autoencoder with partial loss (DAPL) as described in this [paper](https://www.biorxiv.org/content/10.1101/406066v2). 
 
-**Before submitting, ask yourself. . .**
+> "A denoising autoencoder (DAE) aims to recover the noise-free, original input through
+deep networks given a noisy input (Vincent, et al., 2008). In each iteration of training, noise is
+added to the input X to obtain X hat. The loss is computed between the original X and the
+reconstructed X hat). 
 
-- Does the project report you’ve written follow a well-organized structure similar to that of the project template?
-- Is each section (particularly **Analysis** and **Methodology**) written in a clear, concise and specific fashion? Are there any ambiguous terms or phrases that need clarification?
-- Would the intended audience of your project be able to understand your analysis, methods, and results?
-- Have you properly proof-read your project report to assure there are minimal grammatical and spelling mistakes?
-- Are all the resources used for this project correctly cited and referenced?
-- Is the code that implements your solution easily readable and properly commented?
-- Does the code execute without error and produce results similar to those reported?
+> Denoising autoencoder with partial loss
+When the added noise to DAE is in the form of masking noise, i.e., a random fraction of
+the input is set to 0, the DAE can be trained to estimate missing values (Vincent, et al., 2010).
+The 0s in the training data simulate the missing elements and the reconstructed noise-free data
+will fill those positions with estimated values. " [10]
+
+Lastly, I'd look to support the outcome with more validation metrics. For this project, I focused exlusively on the likeness of the data points and measuring that the imputed values fit neatly within their neighborhoods. I would also include a metric that measures the accuracy of the reconstruction.  
 
 ### References
 
@@ -326,5 +339,6 @@ In this section, you will need to provide discussion as to how one aspect of the
 5. https://github.com/eltonlaw/impyute/blob/master/impyute/imputation/cs/fast_knn.py
 6. https://hdbscan.readthedocs.io/en/latest/api.html
 7. https://impyute.readthedocs.io/en/latest/_modules/impyute/imputation/cs/central_tendency.html#mode
-8. https://en.wikipedia.org/wiki/Mel-frequency_cepstrum
-9. https://scikit-learn.org/stable/modules/impute.html
+8. https://scikit-learn.org/stable/modules/impute.html
+9. https://en.wikipedia.org/wiki/Mel-frequency_cepstrum
+10. https://www.biorxiv.org/content/10.1101/406066v2
