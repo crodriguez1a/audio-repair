@@ -67,6 +67,7 @@ class AudioSegment:
         """
         y:np.ndarray = self._audio
         sr:int = self._sr
+        # TODO: 'n_mels':64 https://towardsdatascience.com/audio-classification-using-fastai-and-on-the-fly-frequency-transforms-4dbe1b540f89
         return self._to_mel({'y':y, 'sr':sr})
 
     def mel_to_audio(self, M:np.ndarray) -> np.ndarray:

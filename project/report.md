@@ -1,7 +1,7 @@
 # Machine Learning Engineer Nanodegree
 ## Capstone Project
 Carlos Rodriguez
-July 29nd, 2019
+August 2nd, 2019
 
 ## I. Definition
 
@@ -25,6 +25,15 @@ Restoring or repairing audio is challenging for many reasons. Some inherent chal
 
 Restoring lost audio data is particularly problematic because the audio is generally not missing from the signal, but unintelligible for the listener. This solution would treat unintelligible sound as anomalous and explicitly encode those data points as missing data (null values). An imputation algorithm would then replace the missing data with a plausible replacement similar to its neighbors.
 
+In practice, a final application will execute the following:
+
+1. Load and normalize audio data
+2. Deconstruct audio into features that best characterize the desired source signal (e.g., speech)
+2. Reduce/remove background noise to isolate the most valuable auditory data
+3. Partition the data into clusters separating typical data from atypical data
+5. Remove, then replace atypical data with nearby normal data
+6. Reconstruct audio signal from the repaired data
+
 ### Metrics
 
 A silhouette score was used to analyze the repaired audio. The silhouette value is a measure of how similar an object is to its cluster (cohesion) compared to other groups (separation). The silhouette ranges from −1 to +1, where a high value indicates that the object is well matched to its cluster and poorly matched to neighboring clusters.
@@ -37,30 +46,61 @@ A mean silhouette coefficient over all samples that is closer to `+1` is valuabl
 
 Each audio sample selected included one or more sections of perceived damaged audio. For the purposed of this analysis, "damage" was understood as audio perceived as anything other than speech or naturally occurring ambient sound (e.g., rustling, pops, static).
 
-The inputs for this analysis were loaded from Wav formatted audio files and represented as a floating-point time series. The `sr` parameter was explicitly set to `None` to preserve the native sampling rate. Also, the duration was normalized between the damaged and repaired samples to produce identical input size and shape.
+The inputs for this analysis were loaded from Wav formatted audio files and can be characterized as follows:
 
-```
-librosa.load(wav_path, sr=None, duration=duration) # preserve native sampling rate
-```
+1. One dimensional (single channel) linear pulse of consecutive floating-point values
+1. 44,100 samples per second of audio
+1. Each sample is a single scalar value representing the amplitude (loudness) of the sound wave in one channel of audio data
 
-Subsequently, features were extracted leveraging a computed Mel-scaled spectrogram.
+| shape | min | max | mean |
+|----|----|----|----|
+| `(540225,)` | `-0.11444092` | `0.14855957` | `5.238364e-07` |
 
+More than 40% of the values in the clip were small pulses. Meaning, the majority of the audio was a steady stream of similar amplitude with the exception of a few abnormal spikes in the damaged sample. **(Fig.2)**.
+
+**Fig. 1** A histogram of amplitudes
+
+![workflow](assets/wav_hist.png "WAV Histogram")
+
+**Fig. 2** A wave plot of the damaged sample
+
+![workflow](assets/wav_format.png "WAV format")
+
+Features were extracted leveraging a computed Mel-scaled spectrogram.
+
+The Mel scale is a perceptual scale of pitches judged by listeners to be equal in distance from one another [1]. Mel was chosen for two reasons. The first being that the goal was to isolate and replace human perceived damaged portions of audio.
+
+**Fig. 3** Feature extraction
 ```
 librosa.feature.melspectrogram(y=y, sr=sr)
 ```
 
-The Mel scale is a perceptual scale of pitches judged by listeners to be equal in distance from one another [1]. Mel was chosen for two reasons. The first being that the goal was to isolate and replace human perceived damaged portions of audio. The second reason was more technical. Librosa's implementation of the Mel-scale features also includes an inverse transformation from features back to audio. Including a sonification with the overall analysis of the solution allowed for a demonstrative "evaluation by ear," albeit subjective.
+The extraction resulted in 128 features each indicating a frequency (over time) for each band of the scale.
 
+| shape | min | max | mean |
+|----|----|----|----|
+| `(1056, 128)` | `1.690951e-07` | `38.245834` | `0.1245189` |
+
+ The second reason for choosing Mel was more technical. Librosa's implementation of the Mel-scale features also includes an inverse transformation from features back to audio. Sonification of the solution's output was helpful for an "evaluation by ear," albeit subjective.
+
+**Fig. 4** Feature inversion
 ```
 librosa.feature.inverse.mel_to_audio(M, sr=sr, length=len(original)
 ```
 
-
 ### Exploratory Visualization
 
-The first sample selected for analysis was of human vocals mixed with various distortions. A side-by-side Mel-spectral visualization of the selected pair of inputs further suggested the presence of auditory perceived damage. The areas in bright yellow represented speech and were vividly defined in the ground truth sample. Whereas, the damaged example was not as vivid and peaks of sound were present in windows of time that should have been silent (dark purple), as apparent in the ground truth example.
+The first sample selected for analysis was of human vocals mixed with various distortions.
 
-**Fig. 1** A side-by-side comparison of Mel spectrograms from the damaged and repaired samples respectively
+It could be observed that a broader range of frequencies was present in the first quartile of the Mel-scale bands which might have corresponded with pitches typically found in speech.
+
+**Fig. 5** A mean of frequencies across the 128 Mel bands.
+
+![workflow](assets/mel_dist.png "Mel features")
+
+Separately, a side-by-side Mel-spectral visualization of the selected pair of inputs suggested the presence of auditory perceived damage. The areas in bright yellow represented speech and were vividly defined in the ground truth sample. Whereas, the damaged example was not as vivid and peaks of sound were present in windows of time that should have been silent (dark purple), as apparent in the ground truth example.
+
+**Fig. 6** A side-by-side comparison of Mel spectrograms from the damaged and repaired samples respectively
 
 ![workflow](assets/damaged_rustle.png "damaged")
 ![workflow](assets/ground_truth_rustle.png "ground truth")
@@ -69,7 +109,7 @@ Of course, in a real-world application, a repaired sample would not be available
 
 To establish a baseline for the perceived normal audio, I looked more closely at the Mel features extracted from the samples. I first applied a simple masking technique [2] to isolate the more pertinent auditory data.
 
-**Fig. 2** Separation of background and foreground information from a damaged sample
+**Fig. 7** Separation of background and foreground information from a damaged sample
 
 ![workflow](assets/background_foreground.png "Background / Foreground")
 
@@ -101,7 +141,7 @@ The resulting imputed array produced a silhouette score of ~`-0.5`.
 
 |  | Silhouette Score | Optimal Clusters |
 |-----|-----|-----|
-| **Damaged** |`0.4332`| 3 
+| **Damaged** |`0.4332`| 3
 | **Ground Truth** | `0.5319` | 3
 | **Benchmark** | `-0.5472` | 3
 
@@ -138,7 +178,7 @@ Before attempting to identify anomalous data in the damaged sample, I leveraged 
 
 As a benchmark for clustering, partitions were first established with Kmeans. A custom search function (`search_param`) was utilized to find the optimal value for `k` with the expectation that the repaired sample should only produce `2` well-defined clusters with a silhouette score closer to one.
 
-**Fig. 4** Results of ground-truth clustering with k-means 
+**Fig. 8** Results of ground-truth clustering with k-means
 
 ![workflow](assets/gt_kmeans.png "KMeans Results")
 
@@ -148,43 +188,43 @@ As a benchmark for clustering, partitions were first established with Kmeans. A 
 
 As described above the GLOSH algorithm was utilized to calculate outlier scores for ground-truth. Scoring was included as part of an implementation of HDBSCAN. The larger the score, the more outlier-like the point.[6] A visualization of the scoring was used as an aid in determining a threshold for outliers.
 
-**Fig. 5** Results of ground-truth outlier detection with GLOSH
+**Fig. 9** Results of ground-truth outlier detection with GLOSH
 
 ![workflow](assets/gt_outliers.png "GLOSH Outliers")
 
 ![workflow](assets/gt_outliers_scatter.png "GLOSH Outliers")
 
-Surprisingly, in applying Clustering with HDBSCAN, it became apparent that the two algorithms produced very different results. 
+Surprisingly, in applying Clustering with HDBSCAN, it became apparent that the two algorithms produced very different results.
 
-**Fig. 6** Clusters defined with HDBSCAN
+**Fig. 10** Clusters defined with HDBSCAN
 ![workflow](assets/d_hdb_scatter.png "GLOSH Outliers")
 
-**Fig. 7** Clusters defined with K-Means
+**Fig. 11** Clusters defined with K-Means
 ![workflow](assets/d_kmeans_scatter.png "GLOSH Outliers")
 
 Clustering with HDBSCAN did define clusters with varying density but did not score as well. Assuming that silhouette score (measuring cohesion and likeness) was a reasonable metric to compare across the two algorithms, K-means appeared to have outperformed its more modern counterpart. Although, because the clusters were less globular, I accepted that K-means might have misclassified some points and HDBSCAN likely provided the more accurate partitioning.
 
-**Fig. 8** HDBSCAN Silhouette Score
- 
+**Fig. 12** HDBSCAN Silhouette Score
+
 ![workflow](assets/d_hdb_scores.png "GLOSH Outliers")
 
-Two unique concerns arose after clustering with HDBSCAN and detecting outliers with GLOSH. 
+Two unique concerns arose after clustering with HDBSCAN and detecting outliers with GLOSH.
 
 1. An identical amount of outliers were identified between the damaged and ground-truth samples.
-2. It was apparent that the time-steps where outliers were detected did not include the auditory anomalies in particular. 
+2. It was apparent that the time-steps where outliers were detected did not include the auditory anomalies in particular.
 
-**Fig. 9** Time-steps containing outliers
+**Fig. 13** Time-steps containing outliers
 
 ![workflow](assets/d_outliers_over_time.png "Outliers Over Time")
 
-As a result, I would look at two possible remedies. 
+As a result, I would look at two possible remedies.
 
 1. Evaluating the imputation of secondary clusters instead of outliers
 2. Utilizing a different set of auditory features
 
 A visualization of the smaller cluster (-1 label) over time seem to align more cleanly with the time-steps that needed repair. This alignment might have been an indication that this particular cluster was a better representation of time-steps that included auditory damage. Since I didn't have a mathematical way of mapping data points within clusters directly to auditory damage, I experimented with the imputation of any secondary clusters, expecting that any sparser clusters were more likely to contain the time-steps with auditory damage.
 
-**Fig. 10** Time-steps belonging to cluster with a label of `-1` 
+**Fig. 14** Time-steps belonging to cluster with a label of `-1`
 
 ![workflow](assets/d_cluster_over_time.png "Outliers Over Time")
 
@@ -194,17 +234,17 @@ To intentionally create missing data to be imputed, a value of `None` was assign
 
 Once the values were reassigned, I leveraged the [impyute](https://impyute.readthedocs.io/en/master/) library to perform a cross-sectional imputation setting the mode to **most frequent**. This mode would substitute missing values with the most frequent of that column. In the case that there was a tie a random selection from the columns was made [7]
 
-**Fig. 11** Spectrogram of the repaired sample using "Most Frequent."
+**Fig. 15** Spectrogram of the repaired sample using "Most Frequent."
 
 ![workflow](assets/imputed_most_freq.png "Most Frequent")
 
 With a benchmark established for imputation, I moved on to imputation with KNN (as described previously).
 
-**Fig. 12** Spectrogram of the repaired sample using KNN 
+**Fig. 16** Spectrogram of the repaired sample using KNN
 
 ![workflow](assets/imputed_knn.png "Most Frequent")
 
-Finally, the resulting imputed data was again clustered after searching for optimal `K`. A final score was derived using a silhouette score. 
+Finally, the resulting imputed data was again clustered after searching for optimal `K`. A final score was derived using a silhouette score.
 
 ### Refinement
 
@@ -219,13 +259,13 @@ The following adjustments were applied:
 
 Adjustments to these parameters had minimal effect on the resulting silhouette score.
 
-**Fig. 13** S-Score after adjustments
+**Fig. 17** S-Score after adjustments
 
 ![workflow](assets/imputed_s_score.png "Imputed S-Score")
 
 Tuning the imputation resulted in no improvement, possibly due to the lack of and normal data surrounding the time-steps identified during clustering. In other words, the clusters I chose to impute might have represented too much of the sample to impute with information from its neighbors successfully.
 
-Apart from KNN, the most successful imputer by far was the MICE algorithm (Multivariate Imputation by Chained Equations). MICE uses a chained equation approach to perform multiple imputations across the different variables. 
+Apart from KNN, the most successful imputer by far was the MICE algorithm (Multivariate Imputation by Chained Equations). MICE uses a chained equation approach to perform multiple imputations across the different variables.
 
 Since the Mel-scale produces 128 unique features, an algorithm optimized for multivariate imputation was better suited for the task.
 
@@ -237,13 +277,24 @@ With this in mind, I discovered another iterative and multivariate optimized (ex
 
 Ultimately, the multivariate imputation using a round-robin approach produced the most improved results.
 
-**Fig. 14** Results from iterative imputation
+**Fig. 18** Results from iterative imputation
 
 ![workflow](assets/final_score.png "Final Imputed S-Score")
 
-Processing a brand new input yielded very similar results and scores, but ultimately the solution failed in that statistical differences in time-steps did not directly correlate to auditory differences when interpreting the audio with Mel features.
+Processing a different audio selection further elucidated that the solution could not establish a direct correlation between statistical differences and auditory differences when interpreting the audio with Mel-scale features.
 
-The solution is repeatable and dependable in its imputation of data and can generally find and replace clusters across various inputs, albeit replacing valuable auditory data unnecessarily.
+Ultimately, the question of robustness was evaluated, finding the Silhouette Score of the imputed output:
+
+- The Clusterer did not reliably partition auditory differences
+
+- After imputation, clusters from the validation sample did not reflect strong statistical similarity as compared to the original sample.
+
+| | Best K | Silhouette Score |
+|-----|-----|-----|
+| **Original result** | 2 | -0.0971 |
+| **Validation result** | 19 | -0.1310 |
+
+For these reasons, the results proved that the model was not robust enough to be trusted when providing a new input with similar auditory characteristics.
 
 ### Justification
 
@@ -251,7 +302,7 @@ Although the final results were significantly better than the benchmark, the met
 
 |  | Silhouette Score | Optimal Clusters |
 |-----|-----|-----|
-| **Damaged** |`0.4332`| 3 
+| **Damaged** |`0.4332`| 3
 | **Ground Truth** | `0.5319` | 3
 | **Benchmark** | `-0.5472` | 3
 | **Final Solution** | `-0.0971` | 2
@@ -262,30 +313,30 @@ The problem went unsolved in that a direct quantitative connection could not be 
 
 ### Free-Form Visualization
 
-The most compelling evidence that clustering with Mel features was not finding auditory anomalies or damage was most apparent in the spectrograms below **(Fig. 14)**. I used a zero-constant imputation to visualize time steps that were to be imputed. 
+The most compelling evidence that clustering with Mel features was not finding auditory anomalies or damage was most apparent in the spectrograms below **(Fig. 14)**. I used a zero-constant imputation to visualize time steps that were to be imputed.
 
-**Fig. 15** Failing to find auditory damage
+**Fig. 19** Failing to find auditory damage
 
  ![workflow](assets/d_outliers_over_time.png "Outliers Over Time")
- 
-The unnatural vertical stripes in **Fig. 14** represented the time steps that would be imputed across all of their respective features. Auditory damage could be perceived visually between ~5 and 7 seconds.
 
-**Fig. 16** Clusters over time
+The unnatural vertical stripes in **Fig. 19** represented the time steps that would be imputed across all of their respective features. Auditory damage could be perceived visually between ~5 and 7 seconds.
+
+**Fig. 20** Clusters over time
 
  ![workflow](assets/d_cluster_over_time.png "Outliers Over Time")
- 
-The smaller of the two most significant clusters **(Fig 15)** only indirectly found some of the auditory damage, but those results were not repeatable with other inputs.
 
-**Fig. 17** Alternate Input - Clusters over time
+The smaller of the two most significant clusters **(Fig 20)** only indirectly found some of the auditory damage, but those results were not repeatable with other inputs.
+
+**Fig. 21** Alternate Input - Clusters over time
  ![workflow](assets/val_clusters_over_time.png "Outliers Over Time")
- 
-In **Fig. 18**, clustering failed to partition the damaged audio that occurred before the five-second mark.  
+
+In **Fig. 22**, clustering failed to partition the damaged audio that occurred before the five-second mark.  
 
 ### Reflection
 
 The eventual success of this methodology will depend on the following core expectations:
 
-1. An input that has sufficient *normal* audio to provide to the estimator 
+1. An input that has sufficient *normal* audio to provide to the estimator
 1. Feature engineering resulting in a more accurate representation of auditory changes over time
 2. Clustering that accurately partitions auditory differences
 3. Multivariate imputation that is computationally efficient with high accuracy
@@ -298,18 +349,18 @@ Apart from uncovering a methodology that could work in the real world, there wer
 
 ### Improvement
 
-Overall, I do think this approach could yield real-world results if it could establish a direct quantitative relationship between statistical similarity and auditory similarity. 
+Overall, I do think this approach could yield real-world results if it could establish a direct quantitative relationship between statistical similarity and auditory similarity.
 
-To find that link, I might start by experimenting with a different feature set. The selected features did not seem to sufficiently define the characteristics that represent normal audio (speech in this case). An auditory abnormality may be too similar (on the standard Mel-scale) to speech for a Clusterer to differentiate in a repeatable fashion. 
+To find that link, I might start by experimenting with a different feature set. The selected features did not seem to sufficiently define the characteristics that represent normal audio (speech in this case). An auditory abnormality may be too similar (on the standard Mel-scale) to speech for a Clusterer to differentiate in a repeatable fashion.
 
 For example, a better selection could be MFCC. Mel-frequency cepstral coefficients are frequency bands that are equally spaced on the Mel-scale and approximate the human auditory system's response more closely[9].
 
-Secondly, I'd look at a more precise imputation strategy with deep-learning. I would expect a deep-learning approach to improve upon the success of the iterative multivariate imputation exponentially. A study focused on the imputation of genomic data, recorded some progress using a denoising autoencoder with partial loss (DAPL) as described in this [paper](https://www.biorxiv.org/content/10.1101/406066v2). 
+Secondly, I'd look at a more precise imputation strategy with deep-learning. I would expect a deep-learning approach to improve upon the success of the iterative multivariate imputation exponentially. A study focused on the imputation of genomic data, recorded some progress using a denoising autoencoder with partial loss (DAPL) as described in this [paper](https://www.biorxiv.org/content/10.1101/406066v2).
 
 > "A denoising autoencoder (DAE) aims to recover the noise-free, original input through
-deep networks given a noisy input (Vincent, et al., 2008). In each iteration of training, noise is
+deep networks given a noisy input (Vincent et al., 2008). In each iteration of training, noise is
 added to the input X to obtain X hat. The loss is computed between the original X and the
-reconstructed X hat). 
+reconstructed X hat).
 
 > Denoising autoencoder with partial loss
 When the added noise to DAE is in the form of masking noise, i.e., a random fraction of
